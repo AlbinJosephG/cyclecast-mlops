@@ -191,7 +191,12 @@ def main() -> None:
                     str(path),
                     artifact_path="project_artifacts",
                 )
-                logged_files.append(str(path.relative_to(ROOT)))
+                try:
+                    relative_path = path.relative_to(ROOT)
+                except ValueError:
+                    relative_path = Path(path.name)
+
+                logged_files.append(str(relative_path))
 
         print("\n=== MLFLOW RUN CREATED ===")
         print(f"Experiment: {EXPERIMENT_NAME}")
