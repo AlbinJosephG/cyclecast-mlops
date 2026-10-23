@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import logging
@@ -12,10 +11,11 @@ from typing import Literal
 
 import joblib
 import pandas as pd
-from fastapi import FastAPI, HTTPException, Path as PathParam, Query, Request
+from fastapi import FastAPI, HTTPException, Query, Request
+from fastapi import Path as PathParam
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
-
 
 # ---------------------------------------------------------
 # Configuration
@@ -49,6 +49,7 @@ prediction_lock = threading.Lock()
 # ---------------------------------------------------------
 # Response schemas
 # ---------------------------------------------------------
+
 
 class HealthResponse(BaseModel):
     status: Literal["ok"]
@@ -105,6 +106,7 @@ class ForecastResponse(BaseModel):
 # Model discovery and loading
 # ---------------------------------------------------------
 
+
 def discover_station_ids() -> list[str]:
     """Return station IDs for model files that actually exist."""
 
@@ -113,12 +115,8 @@ def discover_station_ids() -> list[str]:
 
     station_ids = []
 
-    for model_path in MODEL_DIR.glob(
-        f"{MODEL_FILE_PREFIX}*{MODEL_FILE_SUFFIX}"
-    ):
-        station_id = model_path.name[
-            len(MODEL_FILE_PREFIX):-len(MODEL_FILE_SUFFIX)
-        ]
+    for model_path in MODEL_DIR.glob(f"{MODEL_FILE_PREFIX}*{MODEL_FILE_SUFFIX}"):
+        station_id = model_path.name[len(MODEL_FILE_PREFIX) : -len(MODEL_FILE_SUFFIX)]
 
         if STATION_ID_PATTERN.fullmatch(station_id):
             station_ids.append(station_id)
@@ -135,10 +133,7 @@ def get_model_path(station_id: str) -> Path:
             detail="Invalid station ID format.",
         )
 
-    model_path = (
-        MODEL_DIR
-        / f"{MODEL_FILE_PREFIX}{station_id}{MODEL_FILE_SUFFIX}"
-    )
+    model_path = MODEL_DIR / f"{MODEL_FILE_PREFIX}{station_id}{MODEL_FILE_SUFFIX}"
 
     if not model_path.is_file():
         raise HTTPException(
@@ -204,6 +199,7 @@ def format_utc(timestamp) -> str:
 # Application lifecycle
 # ---------------------------------------------------------
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     station_count = len(discover_station_ids())
@@ -232,11 +228,22 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan,
 )
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ],
+    allow_credentials=False,
+    allow_methods=["GET"],
+    allow_headers=["*"],
+)
 
 
 # ---------------------------------------------------------
 # Request logging and error handling
 # ---------------------------------------------------------
+
 
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
@@ -282,6 +289,7 @@ async def handle_http_exception(
 # API endpoints
 # ---------------------------------------------------------
 
+
 @app.get("/", tags=["System"])
 def root():
     return {
@@ -324,7 +332,7 @@ def list_stations(
         total=len(station_ids),
         limit=limit,
         offset=offset,
-        station_ids=station_ids[offset:offset + limit],
+        station_ids=station_ids[offset : offset + limit],
     )
 
 
@@ -358,16 +366,12 @@ def forecast_station(
     try:
         model = load_model(station_id)
 
-        last_training_timestamp = pd.Timestamp(
-            model.history["ds"].max()
-        )
+        last_training_timestamp = pd.Timestamp(model.history["ds"].max())
 
         if pd.isna(last_training_timestamp):
             raise ValueError("Model training cutoff could not be determined.")
 
-        steps = (
-            horizon_hours * 60 // FORECAST_FREQUENCY_MINUTES
-        )
+        steps = horizon_hours * 60 // FORECAST_FREQUENCY_MINUTES
 
         forecast_dates = pd.date_range(
             start=last_training_timestamp
@@ -387,9 +391,7 @@ def forecast_station(
         if not required_columns.issubset(predictions.columns):
             raise ValueError("Prophet returned an unexpected forecast schema.")
 
-        predictions = predictions[
-            ["ds", "yhat", "yhat_lower", "yhat_upper"]
-        ].copy()
+        predictions = predictions[["ds", "yhat", "yhat_lower", "yhat_upper"]].copy()
 
         predictions = predictions.replace(
             [float("inf"), float("-inf")],
@@ -421,9 +423,7 @@ def forecast_station(
             model_family="Prophet",
             target="occupancy_ratio",
             frequency="15min",
-            model_training_cutoff_utc=format_utc(
-                last_training_timestamp
-            ),
+            model_training_cutoff_utc=format_utc(last_training_timestamp),
             forecast_start_utc=forecast_points[0].timestamp_utc,
             forecast_end_utc=forecast_points[-1].timestamp_utc,
             horizon_hours=horizon_hours,
@@ -453,7 +453,6 @@ def forecast_station(
         raise HTTPException(
             status_code=500,
             detail=(
-                "Forecast generation failed. Check the API logs "
-                "for diagnostic details."
+                "Forecast generation failed. Check the API logs for diagnostic details."
             ),
         ) from exc

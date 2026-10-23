@@ -1,4 +1,4 @@
-﻿"""Automated tests for CycleCast data validation."""
+"""Automated tests for CycleCast data validation."""
 
 from pathlib import Path
 
@@ -12,7 +12,11 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def test_required_columns_are_defined():
     assert REQUIRED_COLUMNS == [
-        "query_time", "place_id", "bikes", "empty_docks", "docks"
+        "query_time",
+        "place_id",
+        "bikes",
+        "empty_docks",
+        "docks",
     ]
 
 
@@ -27,9 +31,7 @@ def test_valid_records_are_retained_and_duplicates_removed():
     ]
 
     try:
-        pd.DataFrame(records, columns=REQUIRED_COLUMNS).to_csv(
-            fixture, index=False
-        )
+        pd.DataFrame(records, columns=REQUIRED_COLUMNS).to_csv(fixture, index=False)
 
         result, summary = validate_file(fixture)
 
@@ -46,10 +48,12 @@ def test_missing_required_column_is_rejected():
     fixture.parent.mkdir(parents=True, exist_ok=True)
 
     try:
-        pd.DataFrame({
-            "query_time": ["2024-05-01 10:00:00"],
-            "place_id": ["BikePoints_1"],
-        }).to_csv(fixture, index=False)
+        pd.DataFrame(
+            {
+                "query_time": ["2024-05-01 10:00:00"],
+                "place_id": ["BikePoints_1"],
+            }
+        ).to_csv(fixture, index=False)
 
         with pytest.raises(ValueError, match="missing required columns"):
             validate_file(fixture)

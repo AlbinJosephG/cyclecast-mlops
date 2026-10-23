@@ -1,10 +1,8 @@
-
 import numpy as np
 import pandas as pd
 import pytest
-
-from fastapi.testclient import TestClient
 from fastapi import HTTPException
+from fastapi.testclient import TestClient
 
 from app.main import app
 
@@ -88,9 +86,7 @@ def test_forecast_returns_96_points(client, monkeypatch):
         lambda station_id: FakeProphetModel(),
     )
 
-    response = client.get(
-        "/forecast/BikePoints_1?horizon_hours=24"
-    )
+    response = client.get("/forecast/BikePoints_1?horizon_hours=24")
 
     assert response.status_code == 200
 
@@ -109,9 +105,7 @@ def test_forecast_timestamps_are_15_minutes_apart(client, monkeypatch):
         lambda station_id: FakeProphetModel(),
     )
 
-    response = client.get(
-        "/forecast/BikePoints_1?horizon_hours=1"
-    )
+    response = client.get("/forecast/BikePoints_1?horizon_hours=1")
 
     assert response.status_code == 200
 
@@ -126,10 +120,7 @@ def test_forecast_timestamps_are_15_minutes_apart(client, monkeypatch):
 
     differences = timestamps.to_series().diff().dropna()
 
-    assert all(
-        difference == pd.Timedelta(minutes=15)
-        for difference in differences
-    )
+    assert all(difference == pd.Timedelta(minutes=15) for difference in differences)
 
 
 def test_forecast_bounds_are_valid(client, monkeypatch):
@@ -138,9 +129,7 @@ def test_forecast_bounds_are_valid(client, monkeypatch):
         lambda station_id: FakeProphetModel(),
     )
 
-    response = client.get(
-        "/forecast/BikePoints_1?horizon_hours=1"
-    )
+    response = client.get("/forecast/BikePoints_1?horizon_hours=1")
 
     assert response.status_code == 200
 
@@ -153,9 +142,7 @@ def test_forecast_bounds_are_valid(client, monkeypatch):
 
 
 def test_invalid_horizon_returns_422(client):
-    response = client.get(
-        "/forecast/BikePoints_1?horizon_hours=200"
-    )
+    response = client.get("/forecast/BikePoints_1?horizon_hours=200")
 
     assert response.status_code == 422
 
@@ -169,16 +156,12 @@ def test_missing_model_returns_404(client, monkeypatch):
 
     monkeypatch.setattr("app.main.load_model", missing_model)
 
-    response = client.get(
-        "/forecast/BikePoints_999999?horizon_hours=24"
-    )
+    response = client.get("/forecast/BikePoints_999999?horizon_hours=24")
 
     assert response.status_code == 404
 
 
 def test_invalid_station_id_returns_422(client):
-    response = client.get(
-        "/forecast/invalid%20station?horizon_hours=24"
-    )
+    response = client.get("/forecast/invalid%20station?horizon_hours=24")
 
     assert response.status_code == 422

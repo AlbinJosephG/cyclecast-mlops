@@ -1,4 +1,4 @@
-﻿"""Validate raw observations and build a processed Parquet dataset."""
+"""Validate raw observations and build a processed Parquet dataset."""
 
 import argparse
 import json
@@ -51,25 +51,20 @@ def validate_file(path: Path):
 
     missing_columns = sorted(set(REQUIRED_COLUMNS) - set(df.columns))
     if missing_columns:
-        raise ValueError(
-            f"{path}: missing required columns {missing_columns}"
-        )
+        raise ValueError(f"{path}: missing required columns {missing_columns}")
 
     df = df[REQUIRED_COLUMNS].copy()
     rows_read = len(df)
 
-    df["query_time"] = pd.to_datetime(
-        df["query_time"], errors="coerce", utc=True
-    )
+    df["query_time"] = pd.to_datetime(df["query_time"], errors="coerce", utc=True)
 
     for column in COUNT_COLUMNS:
         df[column] = pd.to_numeric(df[column], errors="coerce")
 
     missing_required = int(df[REQUIRED_COLUMNS].isna().any(axis=1).sum())
 
-    valid_counts = (
-        df[COUNT_COLUMNS].notna().all(axis=1)
-        & df[COUNT_COLUMNS].ge(0).all(axis=1)
+    valid_counts = df[COUNT_COLUMNS].notna().all(axis=1) & df[COUNT_COLUMNS].ge(0).all(
+        axis=1
     )
 
     valid = df.loc[
@@ -79,9 +74,7 @@ def validate_file(path: Path):
         & valid_counts
     ].copy()
 
-    duplicate_rows = int(
-        valid.duplicated(["place_id", "query_time"]).sum()
-    )
+    duplicate_rows = int(valid.duplicated(["place_id", "query_time"]).sum())
 
     # Repeated station/timestamp records are removed deterministically.
     valid = valid.drop_duplicates(
@@ -99,16 +92,19 @@ def validate_file(path: Path):
         "file": str(path.relative_to(ROOT)),
         "rows_read": rows_read,
         "rows_with_missing_required_values": missing_required,
-        "invalid_rows_removed": int(rows_read - len(df.loc[
-            df["query_time"].notna()
-            & df["place_id"].notna()
-            & df["place_id"].str.len().gt(0)
-            & valid_counts
-        ])),
-        "duplicate_rows_removed": duplicate_rows,
-        "capacity_mismatch_rows": int(
-            (~valid["capacity_consistent"]).sum()
+        "invalid_rows_removed": int(
+            rows_read
+            - len(
+                df.loc[
+                    df["query_time"].notna()
+                    & df["place_id"].notna()
+                    & df["place_id"].str.len().gt(0)
+                    & valid_counts
+                ]
+            )
         ),
+        "duplicate_rows_removed": duplicate_rows,
+        "capacity_mismatch_rows": int((~valid["capacity_consistent"]).sum()),
         "rows_retained": int(len(valid)),
     }
 
@@ -130,8 +126,7 @@ def main():
     files = get_daily_files(start, end)
     if not files:
         raise SystemExit(
-            f"No daily CSV files found for {start} through {end}. "
-            "Run ingestion first."
+            f"No daily CSV files found for {start} through {end}. Run ingestion first."
         )
 
     frames = []
@@ -145,28 +140,20 @@ def main():
 
     data = pd.concat(frames, ignore_index=True)
 
-    duplicate_count = int(
-        data.duplicated(["place_id", "query_time"]).sum()
-    )
+    duplicate_count = int(data.duplicated(["place_id", "query_time"]).sum())
     if duplicate_count:
-        data = data.drop_duplicates(
-            ["place_id", "query_time"], keep="last"
-        )
+        data = data.drop_duplicates(["place_id", "query_time"], keep="last")
 
-    data = data.sort_values(
-        ["place_id", "query_time"]
-    ).reset_index(drop=True)
+    data = data.sort_values(["place_id", "query_time"]).reset_index(drop=True)
 
     PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
     REPORT_DIR.mkdir(parents=True, exist_ok=True)
 
     output_file = (
-        PROCESSED_DIR
-        / f"observations_{start.isoformat()}_{end.isoformat()}.parquet"
+        PROCESSED_DIR / f"observations_{start.isoformat()}_{end.isoformat()}.parquet"
     )
     report_file = (
-        REPORT_DIR
-        / f"data_quality_{start.isoformat()}_{end.isoformat()}.json"
+        REPORT_DIR / f"data_quality_{start.isoformat()}_{end.isoformat()}.json"
     )
 
     data.to_parquet(output_file, index=False, compression="snappy")
@@ -187,15 +174,9 @@ def main():
         "duplicate_station_timestamp_pairs": int(
             data.duplicated(["place_id", "query_time"]).sum()
         ),
-        "capacity_mismatch_rows": int(
-            (~data["capacity_consistent"]).sum()
-        ),
-        "observed_bike_count_min": (
-            int(data["bikes"].min()) if len(data) else None
-        ),
-        "observed_bike_count_max": (
-            int(data["bikes"].max()) if len(data) else None
-        ),
+        "capacity_mismatch_rows": int((~data["capacity_consistent"]).sum()),
+        "observed_bike_count_min": (int(data["bikes"].min()) if len(data) else None),
+        "observed_bike_count_max": (int(data["bikes"].max()) if len(data) else None),
         "daily_reports": daily_reports,
         "processed_file": str(output_file.relative_to(ROOT)),
     }

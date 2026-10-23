@@ -32,3 +32,22 @@ mlartifacts/
 .idea/
 Thumbs.db
 .DS_Store
+
+reports/
+
+# Local MLflow database
+mlflow.db
+mlflow.db-shm
+mlflow.db-wal
+
+# Frontend dependencies and build output
+frontend/node_modules/
+frontend/dist/
+
+# Python packaging metadata
+src/*.egg-info/
+src/**/*.egg-info/
+
+# Coverage output
+.coverage
+htmlcov/

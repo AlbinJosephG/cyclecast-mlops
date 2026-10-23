@@ -1,4 +1,4 @@
-﻿"""Download daily cycle-station observations without downloading the full dataset."""
+"""Download daily cycle-station observations without downloading the full dataset."""
 
 import argparse
 import shutil
@@ -38,7 +38,7 @@ def download_file(filename: str, attempts: int = 3) -> Path:
         except Exception as exc:
             last_error = exc
             if attempt < attempts:
-                wait_seconds = 2 ** attempt
+                wait_seconds = 2**attempt
                 print(
                     f"Download attempt {attempt} failed: {exc}. "
                     f"Retrying in {wait_seconds}s..."
@@ -71,8 +71,7 @@ def main():
 
     for day in date_range(start, end):
         relative = (
-            f"data/year={day.year}/month={day.month:02d}/"
-            f"day={day.day:02d}/part.csv"
+            f"data/year={day.year}/month={day.month:02d}/day={day.day:02d}/part.csv"
         )
         destination = (
             RAW_DIR

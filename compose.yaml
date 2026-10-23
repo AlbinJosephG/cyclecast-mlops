@@ -26,3 +26,21 @@ services:
       timeout: 5s
       start_period: 60s
       retries: 3
+
+
+  cyclecast-frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+
+    image: cyclecast-frontend:1.0.0
+    container_name: cyclecast-frontend
+
+    ports:
+      - "127.0.0.1:5173:80"
+
+    depends_on:
+      cyclecast-api:
+        condition: service_healthy
+
+    restart: unless-stopped
