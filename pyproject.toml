@@ -19,6 +19,7 @@ dependencies = [
     "plotly>=5.18",
     "matplotlib>=3.8",
     "huggingface_hub>=0.27",
+    "fastapi>=0.115,<1.0",
 ]
 
 [project.optional-dependencies]
