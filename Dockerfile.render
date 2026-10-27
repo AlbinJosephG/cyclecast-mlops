@@ -1,0 +1,48 @@
+FROM python:3.11-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+WORKDIR /app
+
+COPY requirements-docker.txt ./requirements-docker.txt
+RUN python -m pip install --no-cache-dir -r requirements-docker.txt
+
+COPY app/ ./app/
+
+RUN python - <<'PY'
+from pathlib import Path
+from urllib.request import urlopen
+from zipfile import ZipFile
+from io import BytesIO
+
+url = "https://github.com/AlbinJosephG/cyclecast-mlops/releases/download/models-v1/prophet-models.zip"
+models_dir = Path("/app/models")
+models_dir.mkdir(parents=True, exist_ok=True)
+
+print("Downloading CycleCast Prophet models...")
+with urlopen(url, timeout=180) as response:
+    archive_data = BytesIO(response.read())
+
+with ZipFile(archive_data) as archive:
+    for member in archive.infolist():
+        if member.filename.endswith(".joblib") and "/" not in member.filename and "\\" not in member.filename:
+            target = models_dir / member.filename
+            with archive.open(member) as source, target.open("wb") as destination:
+                destination.write(source.read())
+
+count = len(list(models_dir.glob("prophet_station_*.joblib")))
+print(f"Extracted {count} Prophet models")
+if count == 0:
+    raise RuntimeError("No Prophet models were extracted")
+PY
+
+RUN useradd --create-home --uid 10001 appuser \
+    && chown -R appuser:appuser /app
+
+USER appuser
+
+EXPOSE 8000
+
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

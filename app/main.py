@@ -144,7 +144,7 @@ def get_model_path(station_id: str) -> Path:
     return model_path
 
 
-@lru_cache(maxsize=32)
+@lru_cache(maxsize=1)
 def load_model(station_id: str):
     """
     Load and cache a previously trained Prophet model.
